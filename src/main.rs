@@ -1,162 +1,97 @@
-use ws::{listen, Sender, Handler, Result};
+use ws::{listen, Handler, Handshake, Result, Sender, Message, CloseCode};
 
-#[derive(Copy, Clone)]
 struct Loc {
     x: usize,
     y: usize
 }
 
-#[derive(Copy, Clone)]
-struct GridWorld {
+struct GridWorldServer {
+    out: Sender,
     size: (usize, usize),
     agent_loc: Loc
 }
 
-struct Agent<'a> {
-    grid_world: &'a mut GridWorld,
-    loc: Loc
-}
-
-
-#[derive(Copy, Clone, Debug)]
-enum Move {
-    UP, DOWN, LEFT, RIGHT, STAY
-}
-
-trait AgentMove {
-    fn attempt_move(&mut self, mv: Move) -> bool;
-}
-
-trait ProcessMove {
-    fn process_move(&mut self, mv: Move) -> bool;
-}
-
-impl<'a> AgentMove for Agent<'a> {
-    fn attempt_move(&mut self, mv: Move) -> bool {
-        // let grid_world = &mut self.grid_world;
-        self.grid_world.process_move(mv)
+impl std::fmt::Debug for GridWorldServer {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let mut grid = vec![vec![0; self.size.0]; self.size.1];
+        grid[self.agent_loc.y][self.agent_loc.x] = 1;
+        let mut grid_world_str = format!("Agent loc: ({}, {})", self.agent_loc.x, self.agent_loc.y);
+        for row in grid {
+            grid_world_str = format!("{}\n{:?}", grid_world_str, row);
+        }
+        write!(f, "{}", grid_world_str)
     }
 }
 
-impl ProcessMove for GridWorld {
-    fn process_move(&mut self, mv: Move) -> bool {
+trait GridWorld {
+    fn process_move(&mut self, mv: &str) -> bool;
+}
+
+impl GridWorld for GridWorldServer {
+    fn process_move(&mut self, mv: &str) -> bool {
         match mv {
-            Move::UP => if self.agent_y() < self.size.1 - 1 {
-                self.agent_loc = Loc{x: self.agent_x(), y: self.agent_y() - 1};
+            "UP" => if self.agent_loc.y > 0 {
+                self.agent_loc.y -= 1;
                 true
             } else {
                 false
             },
-            Move::DOWN => if self.agent_y() > 0 {
-                self.agent_loc = Loc{x: self.agent_x(), y: self.agent_y() + 1};
+            "DOWN" => if self.agent_loc.y < self.size.1 - 1 {
+                self.agent_loc.y += 1;
                 true
             } else {
                 false
             },
-            Move::LEFT => if self.agent_x() > 1 {
-                self.agent_loc = Loc{x: self.agent_x() - 1, y: self.agent_y()};
+            "LEFT" => if self.agent_loc.x > 0 {
+                self.agent_loc.x -= 1;
                 true
             } else {
                 false
             },
-            Move::RIGHT => if self.agent_x() < self.size.0 - 1 {
-                println!("IN RIGHT");
-                println!("{}", self);
-                self.agent_loc = Loc{x: self.agent_x() + 1, y: self.agent_y() };
-                println!("{}", self);
+            "RIGHT" => if self.agent_loc.x < self.size.0 - 1 {
+                self.agent_loc.x += 1;
                 true
             } else {
                 false
-            },
+            }
             _ => false
         }
     }
 }
 
-trait AgentLoc {
-    fn agent_loc(&self) -> Loc;
-    fn agent_x(&self) -> usize;
-    fn agent_y(&self) -> usize;
-}
-
-impl AgentLoc for GridWorld {
-    fn agent_loc(&self) -> Loc {
-        self.agent_loc
+impl Handler for GridWorldServer {
+    fn on_open(&mut self, _: Handshake) -> Result<()> {
+        println!("on open");
+        self.out.send(format!("Initial grid_world state:\n{:?}", self))
     }
 
-    fn agent_x(&self) -> usize {
-        self.agent_loc.x
-    }
+    fn on_message(&mut self, msg: Message) -> Result<()> {
+        println!("on message: {}", msg);
 
-    fn agent_y(&self) -> usize {
-        self.agent_loc.y
-    }
-}
-
-impl std::fmt::Display for GridWorld {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let mut grid = vec![vec![0; self.size.0]; self.size.1];
-        grid[self.agent_y()][self.agent_x()] = 1;
-        println!("Agent loc: ({}, {})", self.agent_x(), self.agent_y());
-        for row in grid {
-            println!("{:?}", row);
+        let move_str = msg.as_text().unwrap();
+        if self.process_move(move_str) {
+            // println!("{:?}", self)
+            self.out.send(format!("Moved {}\n{:?}", move_str, self))
+        } else {
+            self.out.send(format!("Could not move {}\n{:?}", move_str, self))
         }
-        write!(f, "")
+    }
+
+    fn on_close(&mut self, code: CloseCode, reason: &str) {
+        println!("Connection closed ({:?}) {}", code, reason);
+
+        // self.out.shutdown().unwrap();
     }
 }
 
-
-fn process_message(msg: ws::Message, grid_world: &mut GridWorld) -> String {
-    let mv = match msg.as_text() {
-        Ok("UP") => Move::UP,
-        Ok("DOWN") => Move::DOWN,
-        Ok("LEFT") => Move::LEFT,
-        Ok("RIGHT") => Move::RIGHT,
-        Ok(_) => Move::STAY,
-        Err(_) => Move::STAY
-    };
-    if grid_world.process_move(mv) {
-        format!("Success! Moved {:?}.\n {}", mv, grid_world)
-    }
-    else {
-        String::from("Error, did not move.\n")
-    }
-}
-
-struct Server {
-    out: Sender,
-    grid_world: GridWorld
-}
-
-impl Handler for Server {
-    fn on_message(&mut self, msg: ws::Message) -> Result<()> {
-        move |msg| {
-            self.out.send(process_message(msg, &mut self.grid_world))
-        };
-        Ok(())
-    }
-}
 
 fn main() {
-
-    let mut grid_world = GridWorld{
+    listen("0.0.0.0:3012", |out| GridWorldServer {
+        out,
         size: (3, 4),
-        agent_loc: Loc{x: 0, y: 0}
-    };
-
-
-    // let mut agent = Agent{grid_world: &grid_world, loc: Loc{x: 0, y: 0}};
-    // for i in 0..5 {
-    //     println!("{}", grid_world);
-    //     grid_world.process_move(Move::RIGHT);
-    // }
-
-    listen("0.0.0.0:3012", |out| Server {out, grid_world}).unwrap();
-
-
-  //  listen("0.0.0.0:3012", |out| {
-	// move |msg| {
-	//      out.send(msg)
-	//}
-  //});
+        agent_loc: Loc{
+            x: 0,
+            y: 0
+        }
+    }).unwrap();
 }
