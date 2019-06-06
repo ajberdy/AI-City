@@ -23,6 +23,16 @@ impl std::fmt::Debug for GridWorldServer {
     }
 }
 
+impl std::fmt::Display for GridWorldServer {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let agent_ix = self.agent_loc.y * self.size.0 + self.agent_loc.x;
+        let bin_grid_str = format!("{}1{}",
+                                   "0".repeat(agent_ix),
+                                   "0".repeat(self.size.0 * self.size.1 - agent_ix - 1));
+        write!(f, "GRID_STATE {} {} {}", self.size.1, self.size.0, bin_grid_str)
+    }
+}
+
 trait GridWorld {
     fn process_move(&mut self, mv: &str) -> bool;
 }
@@ -30,25 +40,25 @@ trait GridWorld {
 impl GridWorld for GridWorldServer {
     fn process_move(&mut self, mv: &str) -> bool {
         match mv {
-            "UP" => if self.agent_loc.y > 0 {
+            "MOVE UP" => if self.agent_loc.y > 0 {
                 self.agent_loc.y -= 1;
                 true
             } else {
                 false
             },
-            "DOWN" => if self.agent_loc.y < self.size.1 - 1 {
+            "MOVE DOWN" => if self.agent_loc.y < self.size.1 - 1 {
                 self.agent_loc.y += 1;
                 true
             } else {
                 false
             },
-            "LEFT" => if self.agent_loc.x > 0 {
+            "MOVE LEFT" => if self.agent_loc.x > 0 {
                 self.agent_loc.x -= 1;
                 true
             } else {
                 false
             },
-            "RIGHT" => if self.agent_loc.x < self.size.0 - 1 {
+            "MOVE RIGHT" => if self.agent_loc.x < self.size.0 - 1 {
                 self.agent_loc.x += 1;
                 true
             } else {
@@ -62,7 +72,8 @@ impl GridWorld for GridWorldServer {
 impl Handler for GridWorldServer {
     fn on_open(&mut self, _: Handshake) -> Result<()> {
         println!("on open");
-        self.out.send(format!("Initial grid_world state:\n{:?}", self))
+        self.out.send(format!("{}", self))
+        // self.out.send(format!("Initial grid_world state:\n{:?}", self))
     }
 
     fn on_message(&mut self, msg: Message) -> Result<()> {
@@ -71,9 +82,12 @@ impl Handler for GridWorldServer {
         let move_str = msg.as_text().unwrap();
         if self.process_move(move_str) {
             // println!("{:?}", self)
-            self.out.send(format!("Moved {}\n{:?}", move_str, self))
+            println!("{}", self);
+            self.out.send(format!("{}", self))
+            // self.out.send(format!("Moved {}\n{:?}", move_str, self))
         } else {
-            self.out.send(format!("Could not move {}\n{:?}", move_str, self))
+            self.out.send(format!("{}", self))
+            //self.out.send(format!("Could not move {}\n{:?}", move_str, self))
         }
     }
 
