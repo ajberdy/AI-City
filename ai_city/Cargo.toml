@@ -1,0 +1,16 @@
+[package]
+name = "ai_city"
+version = "0.1.0"
+authors = ["Aaron Berdy <aaronberdy@ucla.edu>"]
+edition = "2018"
+build = "build.rs"
+
+[dependencies]
+capnp = "0.9.5"
+capnp-rpc = "0.9.0"
+tokio = "0.1.21"
+futures = "0.1.27"
+
+
+[build-dependencies]
+capnpc = "0.9.5"
