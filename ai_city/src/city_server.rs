@@ -1,4 +1,4 @@
-use capnp_rpc::{RpcSystem, twoparty, rpc_twoparty_capnp};
+use capnp_rpc::{RpcSystem, twoparty, rpc_twoparty_capnp, pry};
 use capnp;
 
 use tokio::io::AsyncRead;
@@ -6,18 +6,29 @@ use tokio::runtime::current_thread;
 
 use futures::{Future, Stream};
 
-use crate::grid_world_capnp::grid_world;
+use crate::city_server_capnp::city_server;
 
-struct GridWorldImpl;
+struct CityServerImpl;
 
-impl grid_world::Server for GridWorldImpl {
+impl city_server::Server for CityServerImpl {
     fn ping(
         &mut self,
-        _params: grid_world::PingParams,
-        mut results: grid_world::PingResults
+        _params: city_server::PingParams,
+        mut results: city_server::PingResults
     ) -> capnp::capability::Promise<(), capnp::Error> {
         println!("pinged");
         results.get().set_pong("pong");
+        capnp::capability::Promise::ok(())
+    }
+
+    fn new_session(
+        &mut self,
+        params: city_server::NewSessionParams,
+        mut results: city_server::NewSessionResults,
+    ) -> capnp::capability::Promise<(), capnp::Error> {
+        let uid = pry!(pry!(params.get()).get_uid());
+        pry!(results.get().get_session())
+            .set_session_id(&format!("session-{}", uid));
         capnp::capability::Promise::ok(())
     }
 
@@ -35,8 +46,8 @@ pub fn main() {
     let addr = args[2].to_socket_addrs().unwrap().next().expect("could not parse address");
     let socket = ::tokio::net::TcpListener::bind(&addr).unwrap();
 
-    let grid_world =
-        grid_world::ToClient::new(GridWorldImpl).into_client::<::capnp_rpc::Server>();
+    let city_server =
+        city_server::ToClient::new(CityServerImpl).into_client::<::capnp_rpc::Server>();
 
     let done = socket.incoming().for_each(move |socket| {
         socket.set_nodelay(true)?;
@@ -46,7 +57,7 @@ pub fn main() {
             twoparty::VatNetwork::new(reader, std::io::BufWriter::new(writer),
                                       rpc_twoparty_capnp::Side::Server, Default::default());
 
-        let rpc_system = RpcSystem::new(Box::new(network), Some(grid_world.clone().client));
+        let rpc_system = RpcSystem::new(Box::new(network), Some(city_server.clone().client));
         current_thread::spawn(rpc_system.map_err(|e| println!("error: {:?}", e)));
         Ok(())
     });

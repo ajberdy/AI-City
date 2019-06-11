@@ -6,15 +6,15 @@ use tokio::runtime::current_thread;
 
 use futures::{Future, Stream};
 
-use crate::grid_world_capnp::grid_world;
+use crate::world_state_capnp::grid_world;
 
-struct GridWorldImpl;
+struct WorldStateImpl;
 
-impl grid_world::Server for GridWorldImpl {
+impl world_state::Server for WorldStateImpl {
     fn ping(
         &mut self,
-        _params: grid_world::PingParams,
-        mut results: grid_world::PingResults
+        _params: world_state::PingParams,
+        mut results: world_state::PingResults
     ) -> capnp::capability::Promise<(), capnp::Error> {
         println!("pinged");
         results.get().set_pong("pong");
@@ -35,8 +35,8 @@ pub fn main() {
     let addr = args[2].to_socket_addrs().unwrap().next().expect("could not parse address");
     let socket = ::tokio::net::TcpListener::bind(&addr).unwrap();
 
-    let grid_world =
-        grid_world::ToClient::new(GridWorldImpl).into_client::<::capnp_rpc::Server>();
+    let world_state =
+        world_state::ToClient::new(WorldStateImpl).into_client::<::capnp_rpc::Server>();
 
     let done = socket.incoming().for_each(move |socket| {
         socket.set_nodelay(true)?;
@@ -46,7 +46,7 @@ pub fn main() {
             twoparty::VatNetwork::new(reader, std::io::BufWriter::new(writer),
                                       rpc_twoparty_capnp::Side::Server, Default::default());
 
-        let rpc_system = RpcSystem::new(Box::new(network), Some(grid_world.clone().client));
+        let rpc_system = RpcSystem::new(Box::new(network), Some(world_state.clone().client));
         current_thread::spawn(rpc_system.map_err(|e| println!("error: {:?}", e)));
         Ok(())
     });

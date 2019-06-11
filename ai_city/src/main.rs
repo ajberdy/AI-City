@@ -1,10 +1,13 @@
-pub mod grid_world_capnp {
-    include!(concat!(env!("OUT_DIR"), "/grid_world_capnp.rs"));
+#[macro_use]
+extern crate display_derive;
+
+pub mod city_server_capnp {
+    include!(concat!(env!("OUT_DIR"), "/city_server_capnp.rs"));
 }
 
 
-pub mod client;
-pub mod server;
+pub mod city_client;
+pub mod city_server;
 
 pub fn main() {
     println!("main.rs");
@@ -12,8 +15,8 @@ pub fn main() {
     let args: Vec<String> = ::std::env::args().collect();
     if args.len() >= 2 {
         match &args[1][..] {
-            "client" => return client::main(),
-            "server" => return server::main(),
+            "client" => return city_client::main(),
+            "server" => return city_server::main(),
             _ => ()
         }
     }
