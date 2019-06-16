@@ -38,15 +38,27 @@ impl city_server::Server for CityServerImpl {
         params: city_server::NewSessionParams,
         mut results: city_server::NewSessionResults,
     ) -> capnp::capability::Promise<(), capnp::Error> {
+
         let uid = pry!(pry!(params.get()).get_uid());
         let session_id = format!("session-{}", uid);
-        pry!(results.get().get_session())
-            .set_session_id(&session_id.clone());
+
+        let mut session = pry!(results.get().get_session());
+        session.set_session_id(&session_id.clone());
+        let scene = pry!(session.get_scene());
+        let mut echo = scene.init_echo();
+
         match self.sessions.get(&session_id) {
-            Some(session) => println!("found {}", session.session_id),
+            Some(session) => {
+                println!("found {}", session.session_id);
+                echo.set_state(&session.scene.state);
+            },
             None => {
+                let scene = Scene{
+                    state: "Start state".to_string()
+                };
+                echo.set_state(&scene.state);
                 self.sessions.insert(session_id.clone(),
-                                Session{session_id});
+                                     Session{session_id, scene});
                 println!("did not find")
             }
         }
@@ -57,7 +69,12 @@ impl city_server::Server for CityServerImpl {
 
 
 struct Session {
-    session_id: String
+    session_id: String,
+    scene: Scene
+}
+
+struct Scene{
+    state: String
 }
 
 pub fn main() {
