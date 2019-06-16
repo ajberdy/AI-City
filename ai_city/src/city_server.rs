@@ -6,9 +6,21 @@ use tokio::runtime::current_thread;
 
 use futures::{Future, Stream};
 
+use std::collections::HashMap;
+
 use crate::city_server_capnp::city_server;
 
-struct CityServerImpl;
+struct CityServerImpl {
+    sessions: HashMap<String, Session>
+}
+
+impl CityServerImpl {
+    pub fn new() -> CityServerImpl {
+        CityServerImpl {
+            sessions: HashMap::new()
+        }
+    }
+}
 
 impl city_server::Server for CityServerImpl {
     fn ping(
@@ -27,11 +39,25 @@ impl city_server::Server for CityServerImpl {
         mut results: city_server::NewSessionResults,
     ) -> capnp::capability::Promise<(), capnp::Error> {
         let uid = pry!(pry!(params.get()).get_uid());
+        let session_id = format!("session-{}", uid);
         pry!(results.get().get_session())
-            .set_session_id(&format!("session-{}", uid));
-        capnp::capability::Promise::ok(())
+            .set_session_id(&session_id.clone());
+        match self.sessions.get(&session_id) {
+            Some(session) => println!("found {}", session.session_id),
+            None => {
+                self.sessions.insert(session_id.clone(),
+                                Session{session_id});
+                println!("did not find")
+            }
+        }
+      capnp::capability::Promise::ok(())
     }
 
+}
+
+
+struct Session {
+    session_id: String
 }
 
 pub fn main() {
@@ -47,7 +73,7 @@ pub fn main() {
     let socket = ::tokio::net::TcpListener::bind(&addr).unwrap();
 
     let city_server =
-        city_server::ToClient::new(CityServerImpl).into_client::<::capnp_rpc::Server>();
+        city_server::ToClient::new(CityServerImpl::new()).into_client::<::capnp_rpc::Server>();
 
     let done = socket.incoming().for_each(move |socket| {
         socket.set_nodelay(true)?;

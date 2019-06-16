@@ -28,7 +28,7 @@ fn ping(city_server: &city_server::Client,
     Ok(pong)
 }
 
-#[derive(Display, Debug)]
+#[derive(Display)]
 #[display(fmt = "Session{{session_id: {}}}", session_id)]
 struct Session {
     session_id: String
