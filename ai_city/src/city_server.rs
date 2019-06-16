@@ -34,10 +34,10 @@ impl city_server::Server for CityServerImpl {
         capnp::capability::Promise::ok(())
     }
 
-    fn new_session(
+    fn get_session(
         &mut self,
-        params: city_server::NewSessionParams,
-        mut results: city_server::NewSessionResults
+        params: city_server::GetSessionParams,
+        mut results: city_server::GetSessionResults
     ) -> capnp::capability::Promise<(), capnp::Error> {
 
         let uid = pry!(pry!(params.get()).get_uid());

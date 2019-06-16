@@ -39,7 +39,7 @@ fn get_session(city_server: &city_server::Client,
                uid: &str)
         -> Result<Session, ::capnp::Error> {
     let mut request = city_server
-        .new_session_request();
+        .get_session_request();
     request.get().set_uid(uid);
     let promise = request.send();
     let response = runtime.block_on(promise.promise)?;

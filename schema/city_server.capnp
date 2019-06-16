@@ -4,7 +4,7 @@ interface CityServer {
 
     ping @0 () -> (pong :Text);
 
-    newSession @1 (uid :Text) -> (session :Session);
+    getSession @1 (uid :Text) -> (session :Session);
 
     struct Session {
         sessionId @0 :Text;
@@ -12,11 +12,9 @@ interface CityServer {
     }
 
     struct Scene {
-        type @0 :Text;
-
-        union {
-            echo @1 :EchoScene;
-            demo @2 :DemoScene;
+       union {
+            echo @0 :EchoScene;
+            demo @1 :DemoScene;
         }
 
         struct EchoScene {
@@ -27,4 +25,6 @@ interface CityServer {
             state @0 :Text;
         }
     }
+
+    updateState @2 (sessionId :Text, arg: Text) -> (newState :Text);
 }
