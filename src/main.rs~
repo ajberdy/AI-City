@@ -1,0 +1,10 @@
+use ws::listen;
+
+fn main() {
+   listen("0.0.0.0:3012", |out| {
+	move |msg| {
+	     out.send(msg)
+	}
+   })
+}
+			  
