@@ -1,0 +1,1 @@
+../schema/city_server.capnp
