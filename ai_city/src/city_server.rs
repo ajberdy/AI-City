@@ -7,6 +7,7 @@ use tokio::runtime::current_thread;
 use futures::{Future, Stream};
 
 use std::collections::HashMap;
+use std::mem;
 
 use crate::city_server_capnp::city_server;
 
@@ -36,7 +37,7 @@ impl city_server::Server for CityServerImpl {
     fn new_session(
         &mut self,
         params: city_server::NewSessionParams,
-        mut results: city_server::NewSessionResults,
+        mut results: city_server::NewSessionResults
     ) -> capnp::capability::Promise<(), capnp::Error> {
 
         let uid = pry!(pry!(params.get()).get_uid());
@@ -59,10 +60,32 @@ impl city_server::Server for CityServerImpl {
                 echo.set_state(&scene.state);
                 self.sessions.insert(session_id.clone(),
                                      Session{session_id, scene});
-                println!("did not find")
+                println!("created new session")
             }
         }
-      capnp::capability::Promise::ok(())
+        capnp::capability::Promise::ok(())
+    }
+
+    fn update_state(
+        &mut self,
+        params: city_server::UpdateStateParams,
+        mut results: city_server::UpdateStateResults
+    ) -> capnp::capability::Promise<(), capnp::Error> {
+        let args = pry!(params.get());
+        let session_id = pry!(args.get_session_id());
+        let arg = pry!(args.get_arg());
+
+        match self.sessions.get_mut(session_id) {
+            Some(session) => {
+                println!("old state: {}", session.scene.state);
+                mem::replace(&mut session.scene.state, arg.to_string());
+                results.get().set_new_state(arg);
+                println!("new state: {}", session.scene.state);
+                capnp::capability::Promise::ok(())
+            }
+            None => capnp::capability::Promise::err(
+                capnp::Error::failed("tried updating state with an invalid session id".to_string()))
+        }
     }
 
 }
