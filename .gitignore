@@ -112,3 +112,4 @@ venv.bak/
 
 **/*.rs.bk
 .idea*
+login_keypair.pem
