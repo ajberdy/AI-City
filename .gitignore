@@ -111,3 +111,4 @@ venv.bak/
 #already existing elements are commented out
 
 **/*.rs.bk
+.idea*
