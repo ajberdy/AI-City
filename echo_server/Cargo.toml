@@ -1,8 +1,0 @@
-[package]
-name = "echo_server"
-version = "0.1.0"
-authors = ["Aaron Berdy <aaronberdy@ucla.edu>"]
-edition = "2018"
-
-[dependencies]
-ws = "0.8.1"
