@@ -37,6 +37,17 @@ pub enum State<'a> {
 }
 
 impl Scene {
+    fn get_name(&self) -> String {
+        match self {
+            Scene::PingScene => "PingScene".to_string(),
+            Scene::HikerScene => "HikerScene".to_string(),
+            Scene::MazeScene{
+                grid: _,
+                agent_loc: _
+            } => "MazeScene".to_string()
+        }
+    }
+
     fn get_state<'a>(&'a self) -> State<'a> {
         match self {
             Scene::PingScene => State::PingState,

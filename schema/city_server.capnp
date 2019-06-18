@@ -39,15 +39,18 @@ interface CityServer {
         }
 
         struct PingScene {
-            state @0 :Text;
+            name @0 :Text;
+            state @1 :Text;
         }
 
         struct HikerScene {
-            state @0 :Text;
+            name @0 :Text;
+            state @1 :Text;
         }
 
         struct MazeScene {
-            state @0 :Text;
+            name @0 :Text;
+            state @1 :Text;
         }
     }
 

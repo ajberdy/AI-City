@@ -84,6 +84,8 @@ impl city_server::Server for CityServer {
         }
 
         session.set_session_id(&session_id);
+        let mut capnp_scene = pry!(session.get_scene());
+        capnp_scene.set_name(scene.get_name());
 
         // println!("{}", session_args_type);
         // match session_args.which() {
